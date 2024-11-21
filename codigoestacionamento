@@ -1,0 +1,179 @@
+import java.time.Duration;
+import java.time.ZonedDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
+
+////// Classe que representa um Cliente no estacionamento //
+class Cliente {
+    private final String nome;
+    private final String telefone;
+
+    public Cliente(String nome, String telefone) {
+        this.nome = nome;
+        this.telefone = telefone;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public String getTelefone() {
+        return telefone;
+    }
+}
+
+////// Classe que representa um VeÃ­culo no estacionamento //
+class Veiculo {
+    private final String placa;
+    private final ZonedDateTime horaEntrada;
+    private ZonedDateTime horaSaida;
+    private final Cliente cliente;
+
+    public Veiculo(String placa, Cliente cliente) {
+        this.placa = placa;
+        this.cliente = cliente;
+        this.horaEntrada = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"));
+    }
+
+    public void setHoraSaida() {
+        this.horaSaida = ZonedDateTime.now(ZoneId.of("America/Sao_Paulo"));
+    }
+
+    public long calcularTempoPermanencia() {
+        return Duration.between(horaEntrada, horaSaida).toMinutes();
+    }
+
+    public double calcularValor() {
+        long minutos = calcularTempoPermanencia();
+        double horas = minutos / 60.0;
+        double valor = 10; // R$10 para a primeira hora
+        if (horas > 1) {
+            valor += Math.ceil(horas - 1) * 2;
+        }
+        return valor;
+    }
+
+    public String getHoraEntradaFormatada() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+        return horaEntrada.format(formatter);
+    }
+
+    public String getHoraSaidaFormatada() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+        return horaSaida != null ? horaSaida.format(formatter) : "Ainda no estacionamento";
+    }
+
+    public String getPlaca() {
+        return placa;
+    }
+
+    public Cliente getCliente() {
+        return cliente;
+    }
+}
+
+////// Classe do Estacionamento //
+class Estacionamento {
+    private final Map<String, Veiculo> veiculosEstacionados = new HashMap<>();
+    private int totalVeiculos = 0; // Contador para o total de veÃ­culos que passaram pelo estacionamento
+    private static final int CAPACIDADE_MAXIMA = 5; // Capacidade mÃ¡xima do estacionamento
+    private int vagasOcupadas = 0; // Contador de vagas ocupadas
+
+    public void registrarEntrada(String placa, String nome, String telefone) {
+        if (vagasOcupadas < CAPACIDADE_MAXIMA) { // Verifica se hÃ¡ vagas disponiveis
+            if (!veiculosEstacionados.containsKey(placa)) {
+                Cliente cliente = new Cliente(nome, telefone);
+                Veiculo veiculo = new Veiculo(placa, cliente);
+                veiculosEstacionados.put(placa, veiculo);
+                totalVeiculos++; // Incrementa o contador de veÃ­culos totais
+                vagasOcupadas++; // Incrementa o nÃºmero de vagas ocupadas
+                System.out.println("Entrada registrada para o veiculo com placa: " + placa);
+                System.out.println("Hora de entrada: " + veiculo.getHoraEntradaFormatada());
+                System.out.println("Vagas disponiveis: " + (CAPACIDADE_MAXIMA - vagasOcupadas));
+                
+                // Verifica se o estacionamento atingiu 80% da capacidade
+                if (vagasOcupadas >= CAPACIDADE_MAXIMA * 0.8) {
+                    System.out.println("AtenÃ§Ã£o: O estacionamento estÃ¡ com 80% da capacidade ocupada!");
+                }
+            } else {
+                System.out.println("Erro: Veiculo com placa " + placa + " ja esta no estacionamento.");
+            }
+        } else {
+            System.out.println("Estacionamento lotado! NÃ£o hÃ¡ vagas disponiveis.");
+        }
+    }
+
+    public void registrarSaida(String placa) {
+        Veiculo veiculo = veiculosEstacionados.get(placa);
+        if (veiculo != null) {
+            veiculo.setHoraSaida();
+            double valor = veiculo.calcularValor();
+            veiculosEstacionados.remove(placa);
+            vagasOcupadas--; // Decrementa o nÃºmero de vagas ocupadas
+
+            // Exibe informaÃ§Ãµes do cliente
+            Cliente cliente = veiculo.getCliente();
+            System.out.println("Saida registrada para o veiculo com placa: " + placa);
+            System.out.println("Cliente: " + cliente.getNome() + ", Telefone: " + cliente.getTelefone());
+            System.out.println("Hora de entrada: " + veiculo.getHoraEntradaFormatada());
+            System.out.println("Hora de saida: " + veiculo.getHoraSaidaFormatada());
+            System.out.println("Valor a ser pago: R$ " + valor);
+            System.out.println("Vagas disponiveis: " + (CAPACIDADE_MAXIMA - vagasOcupadas));
+        } else {
+            System.out.println("Erro: Veiculo com placa " + placa + " nao encontrado no estacionamento.");
+        }
+    }
+
+    // Gera um relatÃ³rio com o total de veÃ­culos que entraram no estacionamento
+    public void gerarRelatorio() {
+        System.out.println("\n--- Relatorio do Estacionamento ---");
+        System.out.println("Total de veiculos que entraram no estacionamento: " + totalVeiculos);
+        System.out.println("Vagas ocupadas no momento: " + vagasOcupadas);
+        System.out.println("Vagas disponiveis no momento: " + (CAPACIDADE_MAXIMA - vagasOcupadas));
+        System.out.println("-----------------------------------\n");
+    }
+}
+
+////// Classe principal que executa o programa
+public class Main {
+    public static void main(String[] args) {
+        Estacionamento estacionamento = new Estacionamento();
+        try (Scanner scanner = new Scanner(System.in)) {
+            OUTER:
+            while (true) {
+                System.out.println("\n1. Registrar Entrada");
+                System.out.println("2. Registrar Saida");
+                System.out.println("3. Gerar Relatorio");
+                System.out.println("4. Sair");
+                System.out.print("Escolha uma opcao: ");
+                int opcao = scanner.nextInt();
+                scanner.nextLine();
+                switch (opcao) {
+                    case 1 -> {
+                        System.out.print("Informe a placa do veiculo: ");
+                        String placa = scanner.nextLine();
+                        System.out.print("Informe o nome do cliente: ");
+                        String nome = scanner.nextLine();
+                        System.out.print("Informe o telefone do cliente: ");
+                        String telefone = scanner.nextLine();
+                        estacionamento.registrarEntrada(placa, nome, telefone);
+                    }
+                    case 2 -> {
+                        System.out.print("Informe a placa do veiculo: ");
+                        String placa = scanner.nextLine();
+                        estacionamento.registrarSaida(placa);
+                    }
+                    case 3 -> estacionamento.gerarRelatorio();
+                    case 4 -> {
+                        System.out.println("Encerrando o programa.");
+                        break OUTER;
+                    }
+                    default -> System.out.println("OpÃ§Ã£o invÃ¡lida!");
+                }
+            }
+        }
+    }
+}
